@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GhostChat</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0f0a; color: #00ff41;
+    font-family: "Courier New", monospace;
+    height: 100vh; display: flex; flex-direction: column;
+  }
+  #header {
+    padding: 10px; border-bottom: 1px solid #00ff4144;
+    text-shadow: 0 0 8px #00ff41; font-weight: bold;
+  }
+  #messages { flex: 1; overflow-y: auto; padding: 15px; }
+  .msg { margin-bottom: 10px; }
+  .msg .de { color: #00b3ff; }
+  .moi .de { color: #00ff41; }
+  #form { display: flex; border-top: 1px solid #00ff4144; }
+  #form input {
+    flex: 1; background: transparent; border: none; outline: none;
+    color: #00ff41; font-family: inherit; font-size: 16px; padding: 12px;
+  }
+  #form button {
+    background: #00ff4122; color: #00ff41; border: none;
+    font-family: inherit; padding: 0 20px; cursor: pointer;
+  }
+  .scan {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: repeating-linear-gradient(0deg, transparent 0 2px, #00ff4108 2px 4px);
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+<div class="scan"></div>
+
+<div id="login" style="padding:20px">
+  <div id="header">&gt; GHOSTCHAT :: ACCES PROTEGE</div>
+  <div style="padding:20px 0">
+    <p>&gt; pseudo:</p><input id="pseudo" style="background:transparent;border:1px solid #00ff4144;color:#00ff41;font-family:inherit;padding:8px;width:100%"><br><br>
+    <p>&gt; code:</p><input type="password" id="code" style="background:transparent;border:1px solid #00ff4144;color:#00ff41;font-family:inherit;padding:8px;width:100%"><br><br>
+    <button onclick="login()" style="background:#00ff4122;color:#00ff41;border:1px solid #00ff4144;font-family:inherit;padding:10px 20px;cursor:pointer">[ CONNEXION ]</button>
+    <p id="err" style="color:#ff3333"></p>
+  </div>
+</div>
+
+<div id="chat" style="display:none;flex:1;flex-direction:column">
+  <div id="header">&gt; GHOSTCHAT :: <span id="moi"></span> | EN LIGNE: <span id="online"></span></div>
+  <div id="messages"></div>
+  <div id="form">
+    <input id="dest" placeholder="destinataire" style="max-width:150px">
+    <input id="txt" placeholder="message..." onkeydown="if(event.key=='Enter')envoyer()">
+    <button onclick="envoyer()">[SEND]</button>
+  </div>
+</div>
+
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script>
+const socket = io();
+let monPseudo = "";
+
+function login() {
+  monPseudo = document.getElementById("pseudo").value.trim();
+  const code = document.getElementById("code").value;
+  socket.emit("login", {pseudo: monPseudo, code: code});
+}
+socket.on("login_refuse", () => document.getElementById("err").innerText = "> ACCES REFUSE");
+socket.on("login_ok", () => {
+  document.getElementById("login").style.display = "none";
+  document.getElementById("chat").style.display = "flex";
+  document.getElementById("moi").innerText = monPseudo;
+});
+socket.on("en_ligne", liste => document.getElementById("online").innerText = liste.join(", "));
+socket.on("message", m => {
+  const div = document.createElement("div");
+  div.className = "msg" + (m.de === monPseudo ? " moi" : "");
+  div.innerHTML = `<span class="de">&lt;${m.de}&gt;</span> ${m.texte}`;
+  document.getElementById("messages").appendChild(div);
+  div.scrollIntoView();
+});
+
+function envoyer() {
+  const dest = document.getElementById("dest").value.trim();
+  const txt = document.getElementById("txt").value;
+  if (!dest || !txt) return;
+  socket.emit("message", {de: monPseudo, dest: dest, texte: txt});
+  document.getElementById("txt").value = "";
+}
+</script>
+</body>
+</html>
